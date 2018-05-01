@@ -112,7 +112,7 @@ func performDeployment(artifactPath string) error {
 }
 
 func callSystemCtl(command string) error {
-	cmd := exec.Command("/usr/bin/systemctl", command, "alfio")
+	cmd := exec.Command("sudo", "/usr/bin/systemctl", command, "alfio")
 	return cmd.Run()
 }
 
