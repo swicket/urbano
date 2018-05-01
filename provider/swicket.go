@@ -5,14 +5,32 @@ import (
 	"os"
 )
 
-type Swicket struct{}
-
-func (Swicket) IsActive() bool {
-	return len(os.Getenv("SWICKET_CLIENT_ID")) > 0 && len(os.Getenv("SWICKET_CLIENT_SECRET")) > 0
+// You could think of embedding the clientID and client_secret into the type
+// so that you can build heper methods to fetch them from os.ENV instead of getting them directly
+// this could help you validate the Switcket struct earlier on and decouples you from
+// how you instantiate the type
+type Swicket struct {
+	clientID,
+	clientSecret string
 }
 
-func (Swicket) GetLatestVersion() string {
-	return "WIP"
+func NewSwicketFromEnv() *Swicket {
+	return &Swicket{
+		clientID:     os.Getenv("SWICKET_CLIENT_ID"),
+		clientSecret: os.Getenv("SWICKET_CLIENT_SECRET"),
+	}
+}
+
+func (s *Swicket) valid() bool {
+	return s.clientID != "" && s.clientSecret != ""
+}
+
+func (s Swicket) IsActive() bool {
+	return s.valid()
+}
+
+func (Swicket) GetLatestVersion() (string, error) {
+	return "WIP", nil
 }
 
 func (Swicket) GetArtifactUrl(version string) string {
