@@ -119,7 +119,7 @@ func performDeployment(artifactPath string) error {
 }
 
 func callSystemCtl(command string) error {
-	return exec.Command("/usr/bin/systemctl", command, "alfio").Run()
+	return exec.Command("sudo", "/usr/bin/systemctl", command, "alfio").Run()
 }
 
 func getActiveProviders() (ret []provider.VersionProvider) {
