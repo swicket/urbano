@@ -14,7 +14,6 @@ import (
 )
 
 func main() {
-	// using command-line flags instead of os.Args makes it more reusable plus you get '--help' for free
 	outDir := flag.String("-outdir", "/home/alfio", "Output directory")
 	flag.Parse()
 
@@ -23,26 +22,23 @@ func main() {
 		log.Fatal("no active providers have been found. Aborting.")
 	}
 
-	// probably you need a factory to choose which one should be used
+	// always get the first active provider, in order to ensure priority is respected.
 	p := providers[0]
 	v, err := p.GetLatestVersion()
 	if err != nil {
 		log.Fatalf("Got error from provider [%s]: %v", p.Name(), err)
 	}
 
-	url := p.GetArtifactUrl(v)
+	url := p.GetArtifactURL(v)
 	outFile := filepath.Join(*outDir, fmt.Sprintf("alfio-%s-boot.war", v))
 	log.Print("Provider [", p.Name(), "] says: ", v)
-	// if-else is discouraged, always better to use naked return in main when you want to interrupt flow
 	if _, err := os.Stat(outFile); os.IsNotExist(err) {
 		log.Print("About to download ", url, " => ", outFile)
 		downloadNewRelease(url, outFile)
 		performDeployment(outFile)
 		return
 	}
-	// else {
 	log.Print("File ", outFile, " exists, nothing to be done here.")
-	//}
 }
 
 //source: https://github.com/cavaliercoder/grab
@@ -132,5 +128,5 @@ func getActiveProviders() (ret []provider.VersionProvider) {
 }
 
 func allProviders() []provider.VersionProvider {
-	return []provider.VersionProvider{provider.Swicket{}, provider.GitHub{}}
+	return []provider.VersionProvider{*provider.NewSwicket(), provider.GitHub{}}
 }
