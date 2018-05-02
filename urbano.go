@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -13,36 +14,46 @@ import (
 )
 
 func main() {
-	providers := getActiveProviders()
+	// using command-line flags instead of os.Args makes it more reusable plus you get '--help' for free
+	outDir := flag.String("-outdir", "/home/alfio", "Output directory")
+	flag.Parse()
 
+	providers := getActiveProviders()
 	if len(providers) == 0 {
 		log.Fatal("no active providers have been found. Aborting.")
 	}
-	outDir := "/home/alfio"
-	if len(os.Args) > 1 {
-		outDir = os.Args[1]
-	}
+
+	// probably you need a factory to choose which one should be used
 	p := providers[0]
-	v := p.GetLatestVersion()
-	if v == provider.Error {
-		log.Fatal("Got Error from provider [", p.Name(), "]")
+	v, err := p.GetLatestVersion()
+	if err != nil {
+		log.Fatalf("Got error from provider [%s]: %v", p.Name(), err)
 	}
+
 	url := p.GetArtifactUrl(v)
-	outFile := filepath.Join(outDir, fmt.Sprintf("/alfio-%s-boot.war", v))
+	outFile := filepath.Join(*outDir, fmt.Sprintf("alfio-%s-boot.war", v))
 	log.Print("Provider [", p.Name(), "] says: ", v)
+	// if-else is discouraged, always better to use naked return in main when you want to interrupt flow
 	if _, err := os.Stat(outFile); os.IsNotExist(err) {
 		log.Print("About to download ", url, " => ", outFile)
 		downloadNewRelease(url, outFile)
 		performDeployment(outFile)
-	} else {
-		log.Print("File ", outFile, " exists, nothing to be done here.")
+		return
 	}
+	// else {
+	log.Print("File ", outFile, " exists, nothing to be done here.")
+	//}
 }
 
 //source: https://github.com/cavaliercoder/grab
 func downloadNewRelease(url string, to string) {
 	client := grab.NewClient()
-	req, _ := grab.NewRequest(to, url)
+	req, err := grab.NewRequest(to, url)
+	// never discard errors
+	if err != nil {
+		log.Printf("could not create client to download new release: %v", err)
+		return
+	}
 
 	// start download
 	log.Print("Downloading ", req.URL(), "...")
@@ -56,7 +67,7 @@ Loop:
 	for {
 		select {
 		case <-t.C:
-			log.Printf("  transferred %v / %v bytes (%.2f%%)",
+			log.Printf("  transferred %d / %d bytes (%.2f%%)",
 				resp.BytesComplete(),
 				resp.Size,
 				100*resp.Progress())
@@ -87,13 +98,11 @@ Loop:
 func performDeployment(artifactPath string) error {
 
 	log.Print("Performing deployment of ", artifactPath)
-
 	if err := callSystemCtl("stop"); err != nil {
 		log.Fatal(err)
 	}
 
 	log.Print("delete symlink ")
-
 	symlinkPath := filepath.Join(filepath.Dir(artifactPath), "alfio-boot.war")
 	if _, err := os.Lstat(symlinkPath); err == nil {
 		log.Print("removing symlink ", symlinkPath)
@@ -101,19 +110,16 @@ func performDeployment(artifactPath string) error {
 	}
 
 	log.Print("recreate symlink ")
-
 	if err := os.Symlink(artifactPath, symlinkPath); err != nil {
 		log.Fatal(err)
 	}
 
 	log.Print("restart service")
-
 	return callSystemCtl("start")
 }
 
 func callSystemCtl(command string) error {
-	cmd := exec.Command("sudo", "/usr/bin/systemctl", command, "alfio")
-	return cmd.Run()
+	return exec.Command("sudo", "/usr/bin/systemctl", command, "alfio").Run()
 }
 
 func getActiveProviders() (ret []provider.VersionProvider) {
