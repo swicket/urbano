@@ -11,8 +11,8 @@ type Swicket struct {
 	clientSecret string
 }
 
-// NewSwicketFromEnv Creates a new instance of Swicket provider using env variables
-func NewSwicketFromEnv() *Swicket {
+// NewSwicket Creates a new instance of Swicket provider using env variables
+func NewSwicket() *Swicket {
 	return &Swicket{
 		clientID:     os.Getenv("SWICKET_CLIENT_ID"),
 		clientSecret: os.Getenv("SWICKET_CLIENT_SECRET"),
@@ -20,9 +20,6 @@ func NewSwicketFromEnv() *Swicket {
 }
 
 func (s *Swicket) valid() bool {
-	if s == nil {
-		s = NewSwicketFromEnv()
-	}
 	return s.clientID != "" && s.clientSecret != ""
 }
 
